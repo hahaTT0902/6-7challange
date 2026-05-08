@@ -163,31 +163,17 @@ export default function GameScreen({ onFinish, onBack }) {
   })();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col px-4 py-6">
+    <main className="mx-auto flex h-[100dvh] max-w-4xl flex-col overflow-hidden px-4 py-3 sm:py-4">
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="text-white/70 hover:text-white">{t('common.back')}</button>
         <div className="text-sm text-white/60">{t('app.brand')}</div>
         <LanguageToggle />
       </div>
 
-      <div className="mt-4 flex gap-3">
-        <div className="flex-1 min-w-0">
-          <CameraView ref={videoRef} canvasRef={canvasRef} overlay={overlay} />
-        </div>
-        <MotionMeter value={motionScale} active={phase === 'playing'} t={t} />
-      </div>
-
-      <div className="mt-4">
-        <ScoreDisplay score={score} timeLeftMs={timeLeft} />
-      </div>
-
-      <div className="mt-3 min-h-[1.5rem] text-center text-sm text-white/70">
-        {statusText()}
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-3">
+      {/* Action button placed ABOVE the camera */}
+      <div className="mt-3 shrink-0">
         {phase === 'positioning' && !camError && (
-          <button onClick={beginCountdown} className="btn-neon" disabled={modelLoading}>
+          <button onClick={beginCountdown} className="btn-neon w-full" disabled={modelLoading}>
             {modelLoading ? t('common.loading') : t('game.start')}
           </button>
         )}
@@ -198,11 +184,37 @@ export default function GameScreen({ onFinish, onBack }) {
               setTimeLeft(GAME_DURATION_MS);
               resetCounter();
             }}
-            className="btn-ghost"
+            className="btn-ghost w-full"
           >
             {t('game.cancel')}
           </button>
         )}
+        {phase === 'requesting' && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white/70">
+            {t('game.statusWaitingCamera')}
+          </div>
+        )}
+      </div>
+
+      {/* Camera + meter — flex-1 so it auto-resizes to remaining space */}
+      <div className="mt-3 flex min-h-0 flex-1 gap-3">
+        <div className="relative min-h-0 min-w-0 flex-1">
+          <CameraView
+            ref={videoRef}
+            canvasRef={canvasRef}
+            overlay={overlay}
+            dimmed={phase !== 'playing'}
+          />
+        </div>
+        <MotionMeter value={motionScale} active={phase === 'playing'} t={t} />
+      </div>
+
+      <div className="mt-3 shrink-0">
+        <ScoreDisplay score={score} timeLeftMs={timeLeft} />
+      </div>
+
+      <div className="mt-2 min-h-[1.25rem] shrink-0 text-center text-sm text-white/70">
+        {statusText()}
       </div>
     </main>
   );

@@ -1,12 +1,15 @@
 import { forwardRef } from 'react';
 
-const CameraView = forwardRef(function CameraView({ mirrored = true, overlay, canvasRef }, ref) {
+const CameraView = forwardRef(function CameraView({ mirrored = true, overlay, canvasRef, dimmed = false }, ref) {
   return (
-    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-glow">
+    <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-glow">
       <video
         ref={ref}
-        className="h-full w-full object-cover"
-        style={{ transform: mirrored ? 'scaleX(-1)' : 'none' }}
+        className="h-full w-full object-cover transition-[filter] duration-300"
+        style={{
+          transform: mirrored ? 'scaleX(-1)' : 'none',
+          filter: dimmed ? 'grayscale(0.85) brightness(0.55)' : 'none',
+        }}
         playsInline
         muted
       />

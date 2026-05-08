@@ -41,7 +41,7 @@ const dict = {
     'landing.how2': 'The countdown starts: 3, 2, 1, GO!',
     'landing.how3': 'Pump your arms up and down as fast as you can for 20 seconds.',
     'landing.how4': 'Submit your score and check the leaderboard.',
-    'landing.footer': 'Original project — not affiliated with any other site.',
+    'landing.footer': 'made by hahaTT',
 
     'game.statusWaitingCamera': 'Waiting for camera…',
     'game.statusModelError': 'Pose model error: {msg}',
@@ -142,7 +142,7 @@ const dict = {
     'landing.how2': '倒计时 3、2、1,GO!',
     'landing.how3': '20 秒内尽全力上下挥动双臂。',
     'landing.how4': '提交分数,查看排行榜。',
-    'landing.footer': '独立作品 — 与任何其他网站无关。',
+    'landing.footer': 'made by hahaTT',
 
     'game.statusWaitingCamera': '正在请求摄像头…',
     'game.statusModelError': '姿态模型错误:{msg}',
