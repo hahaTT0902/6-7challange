@@ -19,3 +19,36 @@ model Score {
   @@index([score])
   @@index([createdAt])
 }
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique @db.VarChar(20)
+  passwordHash String   @db.VarChar(255)
+  createdAt    DateTime @default(now())
+
+  duelsCreated Duel[]   @relation("DuelCreator")
+  duelsJoined  Duel[]   @relation("DuelOpponent")
+}
+
+model Duel {
+  id            Int       @id @default(autoincrement())
+  code          String    @unique @db.VarChar(8)
+  status        String    @default("pending") @db.VarChar(16) // pending | playing | done
+
+  creatorId     Int
+  creator       User      @relation("DuelCreator", fields: [creatorId], references: [id])
+  creatorScore  Int?
+  creatorPlayed Boolean   @default(false)
+
+  opponentId    Int?
+  opponent      User?     @relation("DuelOpponent", fields: [opponentId], references: [id])
+  opponentScore Int?
+  opponentPlayed Boolean  @default(false)
+
+  createdAt     DateTime  @default(now())
+  finishedAt    DateTime?
+
+  @@index([code])
+  @@index([status])
+}
+
