@@ -25,7 +25,7 @@ import {
  *
  * Returns { score, processFrame, reset }.
  */
-export function useRepCounter({ enabled }) {
+export function useRepCounter({ enabled, t }) {
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [motionScale, setMotionScale] = useState(0);
@@ -49,7 +49,7 @@ export function useRepCounter({ enabled }) {
 
       const bodyScale = getBodyScale(landmarks);
       if (bodyScale < MIN_BODY_SCALE) {
-        setFeedback('Move back a bit so your shoulders stay clearly visible.');
+        setFeedback(t ? t('game.statusStepBack') : 'Move back a bit so your shoulders stay clearly visible.');
         setMotionScale(0);
         return;
       }
@@ -74,12 +74,12 @@ export function useRepCounter({ enabled }) {
         setScore((s) => Math.min(MAX_REASONABLE_SCORE, s + inc));
         setFeedback('');
       } else if (strongestAmplitude > 0 && strongestAmplitude < LOW_RELATIVE_AMPLITUDE) {
-        setFeedback('幅度太小,把手抬得更高一些 (上下幅度要够大才计分)');
+        setFeedback(t ? t('game.feedbackTooSmall') : 'Amplitude too small — raise your hands a bit higher to score.');
       } else {
         setFeedback('');
       }
     },
-    [enabled]
+    [enabled, t]
   );
 
   return { score, processFrame, reset, feedback, motionScale };
@@ -137,8 +137,8 @@ function updateSide(side, rawY, ts, bodyScale) {
   side.smoothed = y;
 
   const dy = y - prev;
-  // Use a small deadband to ignore noise
-  const noise = 0.0015;
+  // Tiny deadband for camera noise only.
+  const noise = 0.0005;
   if (Math.abs(dy) < noise) return { points: 0, relativeAmplitude: 0 };
 
   const newDir = dy > 0 ? 'down' : 'up';

@@ -7,10 +7,12 @@ import { useCamera } from '../hooks/useCamera.js';
 import { usePoseTracking } from '../hooks/usePoseTracking.js';
 import { useRepCounter } from '../hooks/useRepCounter.js';
 import { COUNTDOWN_MS, GAME_DURATION_MS, LANDMARKS, MIN_CONFIDENCE } from '../utils/constants.js';
+import { LanguageToggle, useI18n } from '../utils/i18n.jsx';
 
 // Game phases:
 // 'idle' | 'requesting' | 'positioning' | 'countdown' | 'playing' | 'finished'
 export default function GameScreen({ onFinish, onBack }) {
+  const { t } = useI18n();
   const { videoRef, ready: camReady, error: camError, start: startCam, stop: stopCam } = useCamera();
   const canvasRef = useRef(null);
   const [phase, setPhase] = useState('idle');
@@ -20,6 +22,7 @@ export default function GameScreen({ onFinish, onBack }) {
 
   const { score, processFrame, reset: resetCounter, feedback, motionScale } = useRepCounter({
     enabled: phase === 'playing',
+    t,
   });
 
   const { loading: modelLoading, error: modelError, hasPerson } = usePoseTracking({
@@ -128,14 +131,14 @@ export default function GameScreen({ onFinish, onBack }) {
   }, [poseLandmarks, hasPerson, videoRef]);
 
   function statusText() {
-    if (phase === 'requesting') return 'Waiting for camera…';
+    if (phase === 'requesting') return t('game.statusWaitingCamera');
     if (camError) return camError;
-    if (modelError) return `Pose model error: ${modelError}`;
-    if (modelLoading) return 'Loading pose model…';
+    if (modelError) return t('game.statusModelError', { msg: modelError });
+    if (modelLoading) return t('game.statusModelLoading');
     if (phase === 'positioning') {
-      if (!hasPerson) return 'Step back and keep your upper body visible.';
+      if (!hasPerson) return t('game.statusStepBack');
       if (feedback) return feedback;
-      return 'Ready! Tap Start when you are set.';
+      return t('game.statusReady');
     }
     if (phase === 'countdown') return null;
     if (phase === 'playing') return feedback || null;
@@ -152,7 +155,7 @@ export default function GameScreen({ onFinish, onBack }) {
     if (phase === 'positioning' && !hasPerson) {
       return (
         <div className="rounded-xl bg-black/60 px-4 py-3 text-sm">
-          Step back and keep your upper body visible.
+          {t('game.statusStepBack')}
         </div>
       );
     }
@@ -162,16 +165,16 @@ export default function GameScreen({ onFinish, onBack }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col px-4 py-6">
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-white/70 hover:text-white">← Back</button>
-        <div className="text-sm text-white/60">67 Challenge</div>
-        <div className="w-12" />
+        <button onClick={onBack} className="text-white/70 hover:text-white">{t('common.back')}</button>
+        <div className="text-sm text-white/60">{t('app.brand')}</div>
+        <LanguageToggle />
       </div>
 
       <div className="mt-4 flex gap-3">
         <div className="flex-1 min-w-0">
           <CameraView ref={videoRef} canvasRef={canvasRef} overlay={overlay} />
         </div>
-        <MotionMeter value={motionScale} active={phase === 'playing'} />
+        <MotionMeter value={motionScale} active={phase === 'playing'} t={t} />
       </div>
 
       <div className="mt-4">
@@ -185,7 +188,7 @@ export default function GameScreen({ onFinish, onBack }) {
       <div className="mt-4 grid grid-cols-1 gap-3">
         {phase === 'positioning' && !camError && (
           <button onClick={beginCountdown} className="btn-neon" disabled={modelLoading}>
-            {modelLoading ? 'Loading…' : 'Start'}
+            {modelLoading ? t('common.loading') : t('game.start')}
           </button>
         )}
         {(phase === 'countdown' || phase === 'playing') && (
@@ -197,7 +200,7 @@ export default function GameScreen({ onFinish, onBack }) {
             }}
             className="btn-ghost"
           >
-            Cancel
+            {t('game.cancel')}
           </button>
         )}
       </div>
@@ -205,7 +208,7 @@ export default function GameScreen({ onFinish, onBack }) {
   );
 }
 
-function MotionMeter({ value, active }) {
+function MotionMeter({ value, active, t }) {
   const pct = Math.max(0, Math.min(100, value * 100));
   // Threshold marker positions (must match constants tiers normalized to FULL_RANGE).
   // LOW=0.12, MIN=0.18, MID=0.32, HIGH(=full)=0.5
@@ -217,7 +220,7 @@ function MotionMeter({ value, active }) {
   return (
     <div className="flex w-20 flex-col items-stretch sm:w-24">
       <div className="text-center text-[10px] uppercase tracking-wider text-white/60">
-        Range
+        {t('game.meter.title')}
       </div>
       <div className="relative mt-1 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-[0_0_24px_rgba(168,85,247,0.25)]">
         {/* Fill grows from bottom up */}
@@ -245,8 +248,8 @@ function MotionMeter({ value, active }) {
           </span>
         </div>
       </div>
-      <div className="mt-1 text-center text-[10px] leading-tight text-white/55">
-        手抬越高<br/>分数越高
+      <div className="mt-1 whitespace-pre-line text-center text-[10px] leading-tight text-white/55">
+        {t('game.meter.hint')}
       </div>
     </div>
   );
