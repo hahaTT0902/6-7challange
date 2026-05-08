@@ -6,6 +6,9 @@ export const COOLDOWN_MS = 120;
 export const SMOOTHING_ALPHA = 0.35;
 export const MIN_CONFIDENCE = 0.5;
 export const MAX_REASONABLE_SCORE = 350;
+export const MIN_BODY_SCALE = 0.08;
+export const MIN_RELATIVE_AMPLITUDE = 0.32;
+export const LOW_RELATIVE_AMPLITUDE = 0.22;
 
 // MediaPipe Pose Landmarker indices we care about
 export const LANDMARKS = {
@@ -15,6 +18,8 @@ export const LANDMARKS = {
   RIGHT_ELBOW: 14,
   LEFT_WRIST: 15,
   RIGHT_WRIST: 16,
+  LEFT_HIP: 23,
+  RIGHT_HIP: 24,
 };
 
 export const SHARE_URL = 'https://67.yutianfu.me';

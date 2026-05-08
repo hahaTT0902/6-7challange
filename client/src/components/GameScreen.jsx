@@ -6,24 +6,29 @@ import PermissionNotice from './PermissionNotice.jsx';
 import { useCamera } from '../hooks/useCamera.js';
 import { usePoseTracking } from '../hooks/usePoseTracking.js';
 import { useRepCounter } from '../hooks/useRepCounter.js';
-import { COUNTDOWN_MS, GAME_DURATION_MS } from '../utils/constants.js';
+import { COUNTDOWN_MS, GAME_DURATION_MS, LANDMARKS, MIN_CONFIDENCE } from '../utils/constants.js';
 
 // Game phases:
 // 'idle' | 'requesting' | 'positioning' | 'countdown' | 'playing' | 'finished'
 export default function GameScreen({ onFinish, onBack }) {
   const { videoRef, ready: camReady, error: camError, start: startCam, stop: stopCam } = useCamera();
+  const canvasRef = useRef(null);
   const [phase, setPhase] = useState('idle');
   const [countdown, setCountdown] = useState(3);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION_MS);
+  const [poseLandmarks, setPoseLandmarks] = useState(null);
 
-  const { score, processFrame, reset: resetCounter } = useRepCounter({
+  const { score, processFrame, reset: resetCounter, feedback, motionScale } = useRepCounter({
     enabled: phase === 'playing',
   });
 
   const { loading: modelLoading, error: modelError, hasPerson } = usePoseTracking({
     videoRef,
     active: camReady && (phase === 'positioning' || phase === 'countdown' || phase === 'playing'),
-    onLandmarks: processFrame,
+    onLandmarks: (landmarks, ts) => {
+      setPoseLandmarks(landmarks);
+      processFrame(landmarks, ts);
+    },
   });
 
   const finishedRef = useRef(false);
@@ -101,6 +106,27 @@ export default function GameScreen({ onFinish, onBack }) {
     setPhase('countdown');
   }
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    if (!canvas || !video) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(1, Math.round(rect.width));
+    const height = Math.max(1, Math.round(rect.height));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, width, height);
+    if (!poseLandmarks || !hasPerson) return;
+
+    drawPoseOverlay(ctx, poseLandmarks, width, height);
+  }, [poseLandmarks, hasPerson, videoRef]);
+
   function statusText() {
     if (phase === 'requesting') return 'Waiting for camera…';
     if (camError) return camError;
@@ -108,10 +134,11 @@ export default function GameScreen({ onFinish, onBack }) {
     if (modelLoading) return 'Loading pose model…';
     if (phase === 'positioning') {
       if (!hasPerson) return 'Step back and keep your upper body visible.';
+      if (feedback) return feedback;
       return 'Ready! Tap Start when you are set.';
     }
     if (phase === 'countdown') return null;
-    if (phase === 'playing') return null;
+    if (phase === 'playing') return feedback || null;
     return null;
   }
 
@@ -141,11 +168,27 @@ export default function GameScreen({ onFinish, onBack }) {
       </div>
 
       <div className="mt-4">
-        <CameraView ref={videoRef} overlay={overlay} />
+        <CameraView ref={videoRef} canvasRef={canvasRef} overlay={overlay} />
       </div>
 
       <div className="mt-4">
         <ScoreDisplay score={score} timeLeftMs={timeLeft} />
+      </div>
+
+      <div className="mt-3 card">
+        <div className="flex items-center justify-between text-xs uppercase tracking-wider text-white/55">
+          <span>Motion Range</span>
+          <span>{Math.round(motionScale * 100)}%</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-violet-400 to-pink-400 transition-[width] duration-150"
+            style={{ width: `${Math.max(6, Math.min(100, motionScale * 100))}%` }}
+          />
+        </div>
+        <div className="mt-2 text-xs text-white/55">
+          Counted reps need a clear up-down swing relative to your shoulder width.
+        </div>
       </div>
 
       <div className="mt-3 min-h-[1.5rem] text-center text-sm text-white/70">
@@ -173,4 +216,62 @@ export default function GameScreen({ onFinish, onBack }) {
       </div>
     </main>
   );
+}
+
+function drawPoseOverlay(ctx, landmarks, width, height) {
+  const visible = (index) => {
+    const point = landmarks[index];
+    return point && (point.visibility ?? 1) >= MIN_CONFIDENCE ? point : null;
+  };
+
+  const segments = [
+    [LANDMARKS.LEFT_SHOULDER, LANDMARKS.RIGHT_SHOULDER],
+    [LANDMARKS.LEFT_SHOULDER, LANDMARKS.LEFT_ELBOW],
+    [LANDMARKS.LEFT_ELBOW, LANDMARKS.LEFT_WRIST],
+    [LANDMARKS.RIGHT_SHOULDER, LANDMARKS.RIGHT_ELBOW],
+    [LANDMARKS.RIGHT_ELBOW, LANDMARKS.RIGHT_WRIST],
+  ];
+
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(103, 232, 249, 0.92)';
+
+  segments.forEach(([fromIndex, toIndex]) => {
+    const from = visible(fromIndex);
+    const to = visible(toIndex);
+    if (!from || !to) return;
+    ctx.beginPath();
+    ctx.moveTo(from.x * width, from.y * height);
+    ctx.lineTo(to.x * width, to.y * height);
+    ctx.stroke();
+  });
+
+  [
+    LANDMARKS.LEFT_SHOULDER,
+    LANDMARKS.RIGHT_SHOULDER,
+    LANDMARKS.LEFT_ELBOW,
+    LANDMARKS.RIGHT_ELBOW,
+  ].forEach((index) => {
+    const point = visible(index);
+    if (!point) return;
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.arc(point.x * width, point.y * height, 5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  [LANDMARKS.LEFT_WRIST, LANDMARKS.RIGHT_WRIST].forEach((index) => {
+    const point = visible(index);
+    if (!point) return;
+    const x = point.x * width;
+    const y = point.y * height;
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(244, 114, 182, 0.98)';
+    ctx.arc(x, y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
