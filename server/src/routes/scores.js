@@ -5,6 +5,7 @@ const prisma = require('../db');
 const { submitScoreSchema } = require('../utils/validation');
 const { submitScoreLimiter } = require('../middleware/rateLimit');
 const { authOptional } = require('../middleware/auth');
+const { claimGuestScores } = require('./auth');
 const { getClientIp, hashIp } = require('../utils/ipHash');
 
 const router = express.Router();
@@ -84,6 +85,16 @@ router.post('/', submitScoreLimiter, authOptional, async (req, res) => {
   try {
     let row;
     if (req.user) {
+      // Self-heal first: merge any guest rows submitted under this username
+      // before the user logged in, so the upcoming upsert sees the right
+      // "existing" personal best.
+      try {
+        if (typeof claimGuestScores === 'function') {
+          await claimGuestScores(req.user.id, req.user.username);
+        }
+      } catch (claimErr) {
+        console.error('[POST /api/scores] claimGuestScores error:', claimErr);
+      }
       // One row per registered user — keep their personal best on the board.
       const existing = await prisma.score.findUnique({ where: { userId: req.user.id } });
       if (existing) {

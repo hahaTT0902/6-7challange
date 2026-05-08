@@ -27,27 +27,55 @@ export default function ResultScreen({
   const [rank, setRank] = useState(null);
   const [shareNote, setShareNote] = useState('');
 
-  // Logged-in users always submit under their account name; keep it in sync
-  // and disable the input so they can't impersonate another nickname.
+  // Logged-in users always submit under their account name; keep it in sync.
   useEffect(() => {
     if (user?.username) setNickname(user.username);
   }, [user]);
 
-  // Show a worldwide rank preview even before submitting (works for guests).
+  // Always show the worldwide rank as soon as the score is known — works for
+  // guests AND logged-in users, regardless of whether the score ends up on
+  // the leaderboard. For logged-in users we also auto-submit in parallel and
+  // then upgrade the displayed rank with the real one returned by the server.
   useEffect(() => {
     let cancelled = false;
+
+    // 1) Show a rank immediately (does not require login or submit).
     (async () => {
       try {
-        const res = await fetchHypotheticalRank(score);
-        if (!cancelled && res?.rank != null) setRank(res.rank);
+        const r = await fetchHypotheticalRank(score);
+        if (!cancelled && r?.rank != null) setRank((prev) => prev ?? r.rank);
       } catch {
-        /* ignore — keep "—" */
+        /* ignore — keep "—" until something else updates it */
       }
     })();
+
+    // 2) For logged-in users, auto-submit so the score is recorded and we get
+    //    the canonical rank back from the server.
+    if (user?.username) {
+      (async () => {
+        setSubmitting(true);
+        setSubmitError(null);
+        try {
+          const res = await submitScore({ nickname: user.username, score });
+          if (cancelled) return;
+          setSubmitted(true);
+          if (res?.rank != null) setRank(res.rank);
+          onSubmitted?.(res?.score?.id ?? null);
+        } catch (e) {
+          if (cancelled) return;
+          console.error(e);
+          setSubmitError(t('result.errSubmit', { detail: '' }));
+        } finally {
+          if (!cancelled) setSubmitting(false);
+        }
+      })();
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [score]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [score, user?.username]);
 
   function validateNickname(n) {
     const trimmed = n.trim();
@@ -109,11 +137,23 @@ export default function ResultScreen({
         </div>
         <div className="card">
           <div className="text-white/60">{t('result.worldRank')}</div>
-          <div className="text-2xl font-bold">{rank ? `#${rank}` : '—'}</div>
+          <div className="text-2xl font-bold">{rank != null ? `#${rank}` : '—'}</div>
         </div>
       </div>
 
-      {!submitted ? (
+      {user ? (
+        <div className="mt-6">
+          {submitting && (
+            <div className="text-white/60">{t('result.submitting')}</div>
+          )}
+          {!submitting && submitted && (
+            <div className="text-emerald-300">{t('result.submitted')}</div>
+          )}
+          {!submitting && submitError && (
+            <p className="text-sm text-rose-300">{submitError}</p>
+          )}
+        </div>
+      ) : !submitted ? (
         <div className="mt-6 text-left">
           <label className="text-sm text-white/70">{t('result.nickname')}</label>
           <input
@@ -121,16 +161,8 @@ export default function ResultScreen({
             onChange={(e) => setNickname(e.target.value)}
             maxLength={20}
             placeholder={t('result.namePlaceholder')}
-            disabled={!!user}
-            className={`mt-1 w-full rounded-xl border px-4 py-3 text-white outline-none focus:border-white/40 ${
-              user
-                ? 'cursor-not-allowed border-white/10 bg-white/5 text-white/70'
-                : 'border-white/15 bg-white/5'
-            }`}
+            className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-white/40"
           />
-          {user && (
-            <p className="mt-1 text-xs text-white/50">{t('result.lockedToAccount')}</p>
-          )}
           {submitError && (
             <p className="mt-2 text-sm text-rose-300">{submitError}</p>
           )}

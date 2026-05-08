@@ -42,6 +42,32 @@ function publicUser(u) {
   return { id: u.id, username: u.username, createdAt: u.createdAt };
 }
 
+/**
+ * When a user registers or logs in, sweep up any old leaderboard rows that
+ * were submitted under the same nickname while logged-out. Keep the highest
+ * score and link it to this user; delete the rest. This way "verified" is
+ * truly unique per account and old guest entries don't double-count.
+ */
+async function claimGuestScores(userId, username) {
+  const ownRow = await prisma.score.findUnique({ where: { userId } });
+  const guestRows = await prisma.score.findMany({
+    where: { nickname: username, userId: null },
+  });
+  if (!ownRow && guestRows.length === 0) return;
+
+  const candidates = [...(ownRow ? [ownRow] : []), ...guestRows];
+  let best = candidates[0];
+  for (const c of candidates) if (c.score > best.score) best = c;
+
+  const idsToDrop = candidates.filter((c) => c.id !== best.id).map((c) => c.id);
+  if (idsToDrop.length) {
+    await prisma.score.deleteMany({ where: { id: { in: idsToDrop } } });
+  }
+  if (best.userId !== userId) {
+    await prisma.score.update({ where: { id: best.id }, data: { userId } });
+  }
+}
+
 router.post('/register', authLimiter, async (req, res) => {
   let parsed;
   try {
@@ -67,6 +93,11 @@ router.post('/register', authLimiter, async (req, res) => {
       data: { username: parsed.username, passwordHash },
       select: { id: true, username: true, createdAt: true },
     });
+    try {
+      await claimGuestScores(user.id, user.username);
+    } catch (claimErr) {
+      console.error('[register] claimGuestScores error:', claimErr);
+    }
     const token = signToken(user);
     return res.status(201).json({ success: true, token, user: publicUser(user) });
   } catch (err) {
@@ -99,6 +130,11 @@ router.post('/login', authLimiter, async (req, res) => {
     if (!ok) {
       return res.status(401).json({ success: false, error: 'Invalid username or password' });
     }
+    try {
+      await claimGuestScores(user.id, user.username);
+    } catch (claimErr) {
+      console.error('[login] claimGuestScores error:', claimErr);
+    }
     const token = signToken(user);
     return res.json({ success: true, token, user: publicUser(user) });
   } catch (err) {
@@ -114,6 +150,14 @@ router.get('/me', authRequired, async (req, res) => {
       select: { id: true, username: true, createdAt: true },
     });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    // Also self-heal: every time the client revives an existing session we
+    // sweep up any old guest leaderboard rows that share this username. This
+    // covers users whose JWT was issued before the auto-claim feature shipped.
+    try {
+      await claimGuestScores(user.id, user.username);
+    } catch (claimErr) {
+      console.error('[me] claimGuestScores error:', claimErr);
+    }
     return res.json({ success: true, user: publicUser(user) });
   } catch (err) {
     console.error('[GET /api/auth/me] db error:', err);
@@ -122,3 +166,4 @@ router.get('/me', authRequired, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.claimGuestScores = claimGuestScores;
