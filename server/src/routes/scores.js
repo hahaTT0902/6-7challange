@@ -58,6 +58,16 @@ router.get('/rank', async (req, res) => {
 
 // POST /api/scores
 router.post('/', submitScoreLimiter, authOptional, async (req, res) => {
+  // Debug: surface why a submission ends up unverified.
+  console.log(
+    '[POST /api/scores] auth header?',
+    !!req.headers.authorization,
+    'req.user=',
+    req.user ? `${req.user.id}:${req.user.username}` : 'null',
+    'body.nickname=',
+    req.body?.nickname
+  );
+
   // Logged-in users always submit under their account username; the incoming
   // nickname field is ignored to prevent identity spoofing.
   const incomingNickname = typeof req.body?.nickname === 'string' ? req.body.nickname : '';
