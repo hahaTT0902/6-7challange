@@ -8,6 +8,8 @@ const helmet = require('helmet');
 const { generalLimiter } = require('./middleware/rateLimit');
 const scoresRouter = require('./routes/scores');
 const leaderboardRouter = require('./routes/leaderboard');
+const authRouter = require('./routes/auth');
+const duelsRouter = require('./routes/duels');
 
 const app = express();
 
@@ -50,6 +52,8 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/scores', scoresRouter);
 app.use('/api/leaderboard', leaderboardRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/duels', duelsRouter);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, error: 'Not found' });

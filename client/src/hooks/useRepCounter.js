@@ -12,7 +12,6 @@ import {
   MIN_CONFIDENCE,
   MIN_RELATIVE_AMPLITUDE,
   SMOOTHING_ALPHA,
-  MAX_REASONABLE_SCORE,
 } from '../utils/constants.js';
 
 /**
@@ -71,7 +70,7 @@ export function useRepCounter({ enabled, t }) {
       }
       setMotionScale(Math.min(1, strongestAmplitude / FULL_RANGE_RELATIVE_AMPLITUDE));
       if (inc > 0) {
-        setScore((s) => Math.min(MAX_REASONABLE_SCORE, s + inc));
+        setScore((s) => s + inc);
         setFeedback('');
       } else if (strongestAmplitude > 0 && strongestAmplitude < LOW_RELATIVE_AMPLITUDE) {
         setFeedback(t ? t('game.feedbackTooSmall') : 'Amplitude too small — raise your hands a bit higher to score.');

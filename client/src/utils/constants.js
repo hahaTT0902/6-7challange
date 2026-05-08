@@ -5,7 +5,6 @@ export const MIN_AMPLITUDE = 0.08; // normalized y-coordinate units
 export const COOLDOWN_MS = 120;
 export const SMOOTHING_ALPHA = 0.35;
 export const MIN_CONFIDENCE = 0.5;
-export const MAX_REASONABLE_SCORE = 350;
 export const MIN_BODY_SCALE = 0.08;
 // Amplitude tiers (relative to body scale). Anything below LOW = warning, no score.
 // Above LOW counts; bigger swing = more points (1 / 2 / 3 / 4).
