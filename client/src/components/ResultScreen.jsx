@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getRating } from '../utils/scoring.js';
-import { submitScore } from '../utils/api.js';
+import { fetchHypotheticalRank, submitScore } from '../utils/api.js';
 import { shareResult } from '../utils/share.js';
 import { LanguageToggle, useI18n } from '../utils/i18n.jsx';
+import { useAuth } from '../hooks/useAuth.jsx';
 import { SHARE_URL } from '../utils/constants.js';
 
 const NICK_REGEX = /^[A-Za-z0-9 _\-\u4e00-\u9fff]+$/;
@@ -17,13 +18,36 @@ export default function ResultScreen({
   onSaveNickname,
 }) {
   const { t } = useI18n();
+  const { user } = useAuth();
   const rating = getRating(score);
-  const [nickname, setNickname] = useState(defaultNickname || '');
+  const [nickname, setNickname] = useState(user?.username || defaultNickname || '');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [rank, setRank] = useState(null);
   const [shareNote, setShareNote] = useState('');
+
+  // Logged-in users always submit under their account name; keep it in sync
+  // and disable the input so they can't impersonate another nickname.
+  useEffect(() => {
+    if (user?.username) setNickname(user.username);
+  }, [user]);
+
+  // Show a worldwide rank preview even before submitting (works for guests).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchHypotheticalRank(score);
+        if (!cancelled && res?.rank != null) setRank(res.rank);
+      } catch {
+        /* ignore — keep "—" */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [score]);
 
   function validateNickname(n) {
     const trimmed = n.trim();
@@ -97,8 +121,16 @@ export default function ResultScreen({
             onChange={(e) => setNickname(e.target.value)}
             maxLength={20}
             placeholder={t('result.namePlaceholder')}
-            className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-white/40"
+            disabled={!!user}
+            className={`mt-1 w-full rounded-xl border px-4 py-3 text-white outline-none focus:border-white/40 ${
+              user
+                ? 'cursor-not-allowed border-white/10 bg-white/5 text-white/70'
+                : 'border-white/15 bg-white/5'
+            }`}
           />
+          {user && (
+            <p className="mt-1 text-xs text-white/50">{t('result.lockedToAccount')}</p>
+          )}
           {submitError && (
             <p className="mt-2 text-sm text-rose-300">{submitError}</p>
           )}

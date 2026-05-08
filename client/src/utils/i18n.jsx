@@ -82,6 +82,7 @@ const dict = {
     'result.errChars': 'Only letters, digits, Chinese, space, _ and - allowed',
     'result.errSubmit': 'Score saved locally, but failed to submit online{detail}. Please try again.',
     'result.errFallback': 'Failed to load leaderboard',
+    'result.lockedToAccount': 'Submitting under your account name.',
 
     'rating.beginner': 'Beginner',
     'rating.warming': 'Warming Up',
@@ -99,6 +100,8 @@ const dict = {
     'board.col.date': 'Date',
     'board.empty': 'No scores yet — be the first!',
     'board.footer': 'Top 100 scores. Order: highest score first, ties broken by earliest submission.',
+    'board.verified': 'Verified account',
+    'board.guest': 'guest',
 
     'how.title': 'How It Works',
     'how.intro':
@@ -234,6 +237,7 @@ const dict = {
     'result.errChars': '仅支持字母、数字、中文、空格、_ 和 -',
     'result.errSubmit': '分数已本地保存,但在线提交失败{detail}。请重试。',
     'result.errFallback': '加载排行榜失败',
+    'result.lockedToAccount': '将以你的账号名提交。',
 
     'rating.beginner': '新手',
     'rating.warming': '热身中',
@@ -251,6 +255,8 @@ const dict = {
     'board.col.date': '时间',
     'board.empty': '还没有分数 — 来当第一名!',
     'board.footer': '只显示前 100 名。先按分数从高到低,再按最早提交时间排序。',
+    'board.verified': '已验证账号',
+    'board.guest': '游客',
 
     'how.title': '玩法说明',
     'how.intro':

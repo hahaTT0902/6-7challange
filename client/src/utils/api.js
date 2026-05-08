@@ -56,6 +56,11 @@ export function fetchScoreRank(id) {
   return request(`/api/scores/${id}/rank`);
 }
 
+export function fetchHypotheticalRank(score) {
+  const qs = new URLSearchParams({ score: String(score) }).toString();
+  return request(`/api/scores/rank?${qs}`);
+}
+
 export function health() {
   return request('/api/health');
 }

@@ -97,6 +97,7 @@ export default function Leaderboard({ onBack, highlightId }) {
             !error &&
             items.map((it) => {
               const isMe = highlightId && it.id === highlightId;
+              const verified = !!it.verified;
               return (
                 <div
                   key={it.id}
@@ -104,11 +105,42 @@ export default function Leaderboard({ onBack, highlightId }) {
                     isMe ? 'bg-gradient-to-r from-cyan-500/20 via-violet-500/20 to-pink-500/20' : ''
                   }`}
                 >
-                  <div className="col-span-2 font-bold text-white/80">#{it.rank}</div>
+                  <div className={`col-span-2 font-bold ${verified ? 'text-white/80' : 'text-white/35'}`}>
+                    #{it.rank}
+                  </div>
                   {/* React auto-escapes text content -> safe against XSS */}
-                  <div className="col-span-5 truncate">{it.nickname}</div>
-                  <div className="col-span-2 text-right font-bold gradient-text">{it.score}</div>
-                  <div className="col-span-3 text-right text-xs text-white/50">{formatDate(it.createdAt, lang)}</div>
+                  <div
+                    className={`col-span-5 flex items-center gap-2 truncate ${
+                      verified ? 'text-white' : 'text-white/45'
+                    }`}
+                  >
+                    <span className="truncate">{it.nickname}</span>
+                    {verified ? (
+                      <span
+                        title={t('board.verified')}
+                        className="shrink-0 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300"
+                      >
+                        ✓
+                      </span>
+                    ) : (
+                      <span
+                        title={t('board.guest')}
+                        className="shrink-0 rounded-full border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/40"
+                      >
+                        {t('board.guest')}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className={`col-span-2 text-right font-bold ${
+                      verified ? 'gradient-text' : 'text-white/45'
+                    }`}
+                  >
+                    {it.score}
+                  </div>
+                  <div className={`col-span-3 text-right text-xs ${verified ? 'text-white/50' : 'text-white/30'}`}>
+                    {formatDate(it.createdAt, lang)}
+                  </div>
                 </div>
               );
             })}

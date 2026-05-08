@@ -16,6 +16,11 @@ model Score {
   ipHash    String?  @db.VarChar(128)
   createdAt DateTime @default(now())
 
+  // Optional link to a registered account. When set, this row is the user's
+  // single "verified" leaderboard entry (kept as their personal best).
+  userId    Int?     @unique
+  user      User?    @relation(fields: [userId], references: [id])
+
   @@index([score])
   @@index([createdAt])
 }
@@ -26,6 +31,7 @@ model User {
   passwordHash String   @db.VarChar(255)
   createdAt    DateTime @default(now())
 
+  score        Score?
   duelsCreated Duel[]   @relation("DuelCreator")
   duelsJoined  Duel[]   @relation("DuelOpponent")
 }

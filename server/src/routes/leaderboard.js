@@ -38,7 +38,7 @@ router.get('/', async (req, res) => {
       where,
       orderBy: [{ score: 'desc' }, { createdAt: 'asc' }],
       take: limit,
-      select: { id: true, nickname: true, score: true, createdAt: true },
+      select: { id: true, nickname: true, score: true, createdAt: true, userId: true },
     });
 
     const items = rows.map((r, idx) => ({
@@ -47,6 +47,7 @@ router.get('/', async (req, res) => {
       nickname: r.nickname,
       score: r.score,
       createdAt: r.createdAt,
+      verified: !!r.userId,
     }));
 
     return res.json({ period, items });
