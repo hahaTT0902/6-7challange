@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(139, 92, 246, 0.35), transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(255, 43, 214, 0.25), transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.12), transparent 60%),
+    #0b0420;
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+}
+
+.btn-neon {
+  @apply inline-flex items-center justify-center rounded-2xl px-6 py-4 text-lg font-bold tracking-wide transition active:scale-95;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6, #ff2bd6);
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.45);
+  color: white;
+}
+
+.btn-neon:hover {
+  filter: brightness(1.1);
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center rounded-2xl px-6 py-4 text-lg font-semibold tracking-wide border border-white/20 bg-white/5 text-white transition active:scale-95 hover:bg-white/10;
+}
+
+.card {
+  @apply rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-md;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6, #ff2bd6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

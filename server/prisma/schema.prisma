@@ -1,0 +1,21 @@
+// Prisma schema for 67 Challenge
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Score {
+  id        Int      @id @default(autoincrement())
+  nickname  String   @db.VarChar(20)
+  score     Int
+  userAgent String?  @db.VarChar(255)
+  ipHash    String?  @db.VarChar(128)
+  createdAt DateTime @default(now())
+
+  @@index([score])
+  @@index([createdAt])
+}
