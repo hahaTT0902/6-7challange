@@ -160,35 +160,22 @@ export default function GameScreen({ onFinish, onBack }) {
   })();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-6">
+    <main className="mx-auto flex min-h-screen max-w-4xl flex-col px-4 py-6">
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="text-white/70 hover:text-white">← Back</button>
         <div className="text-sm text-white/60">67 Challenge</div>
         <div className="w-12" />
       </div>
 
-      <div className="mt-4">
-        <CameraView ref={videoRef} canvasRef={canvasRef} overlay={overlay} />
+      <div className="mt-4 flex gap-3">
+        <div className="flex-1 min-w-0">
+          <CameraView ref={videoRef} canvasRef={canvasRef} overlay={overlay} />
+        </div>
+        <MotionMeter value={motionScale} active={phase === 'playing'} />
       </div>
 
       <div className="mt-4">
         <ScoreDisplay score={score} timeLeftMs={timeLeft} />
-      </div>
-
-      <div className="mt-3 card">
-        <div className="flex items-center justify-between text-xs uppercase tracking-wider text-white/55">
-          <span>Motion Range</span>
-          <span>{Math.round(motionScale * 100)}%</span>
-        </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-violet-400 to-pink-400 transition-[width] duration-150"
-            style={{ width: `${Math.max(6, Math.min(100, motionScale * 100))}%` }}
-          />
-        </div>
-        <div className="mt-2 text-xs text-white/55">
-          Counted reps need a clear up-down swing relative to your shoulder width.
-        </div>
       </div>
 
       <div className="mt-3 min-h-[1.5rem] text-center text-sm text-white/70">
@@ -215,6 +202,53 @@ export default function GameScreen({ onFinish, onBack }) {
         )}
       </div>
     </main>
+  );
+}
+
+function MotionMeter({ value, active }) {
+  const pct = Math.max(0, Math.min(100, value * 100));
+  // Threshold marker positions (must match constants tiers normalized to FULL_RANGE).
+  // LOW=0.12, MIN=0.18, MID=0.32, HIGH(=full)=0.5
+  const tiers = [
+    { label: '1x', pos: (0.18 / 0.5) * 100 },
+    { label: '2x', pos: (0.32 / 0.5) * 100 },
+    { label: '3x', pos: 100 },
+  ];
+  return (
+    <div className="flex w-20 flex-col items-stretch sm:w-24">
+      <div className="text-center text-[10px] uppercase tracking-wider text-white/60">
+        Range
+      </div>
+      <div className="relative mt-1 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-[0_0_24px_rgba(168,85,247,0.25)]">
+        {/* Fill grows from bottom up */}
+        <div
+          className="absolute inset-x-0 bottom-0 rounded-2xl bg-gradient-to-t from-cyan-400 via-violet-400 to-pink-400 transition-[height] duration-100"
+          style={{ height: `${pct}%`, opacity: active ? 1 : 0.55 }}
+        />
+        {/* Tier marker lines + labels */}
+        {tiers.map((t) => (
+          <div
+            key={t.label}
+            className="pointer-events-none absolute inset-x-0 flex items-center justify-end pr-1"
+            style={{ bottom: `${t.pos}%` }}
+          >
+            <div className="absolute inset-x-1 h-px bg-white/40" />
+            <span className="relative z-10 rounded bg-black/60 px-1 text-[9px] font-semibold text-white/85">
+              {t.label}
+            </span>
+          </div>
+        ))}
+        {/* Live percent in middle */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-bold tabular-nums text-white shadow">
+            {Math.round(pct)}%
+          </span>
+        </div>
+      </div>
+      <div className="mt-1 text-center text-[10px] leading-tight text-white/55">
+        手抬越高<br/>分数越高
+      </div>
+    </div>
   );
 }
 

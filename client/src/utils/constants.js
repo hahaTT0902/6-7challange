@@ -7,8 +7,15 @@ export const SMOOTHING_ALPHA = 0.35;
 export const MIN_CONFIDENCE = 0.5;
 export const MAX_REASONABLE_SCORE = 350;
 export const MIN_BODY_SCALE = 0.08;
-export const MIN_RELATIVE_AMPLITUDE = 0.32;
-export const LOW_RELATIVE_AMPLITUDE = 0.22;
+// Amplitude tiers (relative to body scale). Anything below LOW = warning, no score.
+// Above LOW counts; bigger swing = more points (1 / 2 / 3 / 4).
+export const LOW_RELATIVE_AMPLITUDE = 0.12;   // below this: ignored, warn user
+export const MIN_RELATIVE_AMPLITUDE = 0.18;   // tier 1: 1 pt
+export const MID_RELATIVE_AMPLITUDE = 0.32;   // tier 2: 2 pts
+export const HIGH_RELATIVE_AMPLITUDE = 0.5;   // tier 3: 3 pts
+export const HUGE_RELATIVE_AMPLITUDE = 0.75;  // tier 4: 4 pts
+// Bar fills to 100% at this amplitude
+export const FULL_RANGE_RELATIVE_AMPLITUDE = HIGH_RELATIVE_AMPLITUDE;
 
 // MediaPipe Pose Landmarker indices we care about
 export const LANDMARKS = {

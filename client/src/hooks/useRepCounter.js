@@ -1,8 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import {
   COOLDOWN_MS,
+  FULL_RANGE_RELATIVE_AMPLITUDE,
+  HIGH_RELATIVE_AMPLITUDE,
+  HUGE_RELATIVE_AMPLITUDE,
   LANDMARKS,
   LOW_RELATIVE_AMPLITUDE,
+  MID_RELATIVE_AMPLITUDE,
   MIN_AMPLITUDE,
   MIN_BODY_SCALE,
   MIN_CONFIDENCE,
@@ -57,22 +61,20 @@ export function useRepCounter({ enabled }) {
       let strongestAmplitude = 0;
       if (lw && (lw.visibility ?? 1) >= MIN_CONFIDENCE) {
         const result = updateSide(stateRef.current.left, lw.y, ts, bodyScale);
-        if (result.counted) inc += 1;
+        inc += result.points;
         strongestAmplitude = Math.max(strongestAmplitude, result.relativeAmplitude);
       }
       if (rw && (rw.visibility ?? 1) >= MIN_CONFIDENCE) {
         const result = updateSide(stateRef.current.right, rw.y, ts, bodyScale);
-        if (result.counted) inc += 1;
+        inc += result.points;
         strongestAmplitude = Math.max(strongestAmplitude, result.relativeAmplitude);
       }
-      setMotionScale(Math.min(1, strongestAmplitude / MIN_RELATIVE_AMPLITUDE));
+      setMotionScale(Math.min(1, strongestAmplitude / FULL_RANGE_RELATIVE_AMPLITUDE));
       if (inc > 0) {
         setScore((s) => Math.min(MAX_REASONABLE_SCORE, s + inc));
         setFeedback('');
       } else if (strongestAmplitude > 0 && strongestAmplitude < LOW_RELATIVE_AMPLITUDE) {
-        setFeedback('Raise your hands higher. Tiny movements do not count.');
-      } else if (strongestAmplitude > 0 && strongestAmplitude < MIN_RELATIVE_AMPLITUDE) {
-        setFeedback('Almost there — use a bigger arm swing to score.');
+        setFeedback('幅度太小,把手抬得更高一些 (上下幅度要够大才计分)');
       } else {
         setFeedback('');
       }
@@ -128,7 +130,7 @@ function updateSide(side, rawY, ts, bodyScale) {
   if (side.smoothed == null) {
     side.smoothed = rawY;
     side.extremeY = rawY;
-    return { counted: false, relativeAmplitude: 0 };
+    return { points: 0, relativeAmplitude: 0 };
   }
   const prev = side.smoothed;
   const y = SMOOTHING_ALPHA * rawY + (1 - SMOOTHING_ALPHA) * prev;
@@ -137,41 +139,45 @@ function updateSide(side, rawY, ts, bodyScale) {
   const dy = y - prev;
   // Use a small deadband to ignore noise
   const noise = 0.0015;
-  if (Math.abs(dy) < noise) return { counted: false, relativeAmplitude: 0 };
+  if (Math.abs(dy) < noise) return { points: 0, relativeAmplitude: 0 };
 
   const newDir = dy > 0 ? 'down' : 'up';
 
   if (side.direction == null) {
     side.direction = newDir;
     side.extremeY = y;
-    return { counted: false, relativeAmplitude: 0 };
+    return { points: 0, relativeAmplitude: 0 };
   }
 
   if (newDir === side.direction) {
     // Track running extreme
     if (newDir === 'down' && y > side.extremeY) side.extremeY = y;
     else if (newDir === 'up' && y < side.extremeY) side.extremeY = y;
-    return { counted: false, relativeAmplitude: 0 };
+    return { points: 0, relativeAmplitude: 0 };
   }
 
-  // Direction reversed — measure amplitude from previous extreme.
+  // Direction reversed — measure Y amplitude from previous extreme.
   const amplitude = Math.abs(y - side.extremeY);
   const relativeAmplitude = amplitude / Math.max(bodyScale, MIN_AMPLITUDE);
-  let counted = false;
+  let points = 0;
 
-  // Count one rep when wrist swings UP after going DOWN (down -> up reversal).
+  // Award points only on down -> up reversal (each upward stroke = one rep).
+  // Bigger amplitude = more points.
   if (
     side.direction === 'down' &&
     newDir === 'up' &&
-    amplitude >= MIN_AMPLITUDE &&
-    relativeAmplitude >= MIN_RELATIVE_AMPLITUDE &&
+    relativeAmplitude >= LOW_RELATIVE_AMPLITUDE &&
     ts - side.lastRepTs >= COOLDOWN_MS
   ) {
-    counted = true;
+    if (relativeAmplitude >= HUGE_RELATIVE_AMPLITUDE) points = 4;
+    else if (relativeAmplitude >= HIGH_RELATIVE_AMPLITUDE) points = 3;
+    else if (relativeAmplitude >= MID_RELATIVE_AMPLITUDE) points = 2;
+    else if (relativeAmplitude >= MIN_RELATIVE_AMPLITUDE) points = 1;
+    else points = 1; // LOW..MIN still gives 1 point ("有 Y 偏差就算")
     side.lastRepTs = ts;
   }
 
   side.direction = newDir;
   side.extremeY = y;
-  return { counted, relativeAmplitude };
+  return { points, relativeAmplitude };
 }
