@@ -10,11 +10,11 @@ export const MIN_BODY_SCALE = 0.08;
 // Amplitude tiers (relative to body scale). Anything below LOW = warning, no score.
 // Above LOW counts; bigger swing = more points (1 / 2 / 3 / 4).
 // Tuned so even tiny Y movements count.
-export const LOW_RELATIVE_AMPLITUDE = 0.04;   // below this: ignored, warn user
-export const MIN_RELATIVE_AMPLITUDE = 0.06;   // tier 1: 1 pt
-export const MID_RELATIVE_AMPLITUDE = 0.15;   // tier 2: 2 pts
-export const HIGH_RELATIVE_AMPLITUDE = 0.30;  // tier 3: 3 pts
-export const HUGE_RELATIVE_AMPLITUDE = 0.50;  // tier 4: 4 pts
+export const LOW_RELATIVE_AMPLITUDE = 0.001;   // below this: ignored, warn user
+export const MIN_RELATIVE_AMPLITUDE = 0.01;   // tier 1: 1 pt
+export const MID_RELATIVE_AMPLITUDE = 0.02;   // tier 2: 2 pts
+export const HIGH_RELATIVE_AMPLITUDE = 0.03;  // tier 3: 3 pts
+export const HUGE_RELATIVE_AMPLITUDE = 0.04;  // tier 4: 4 pts
 // Bar fills to 100% at this amplitude
 export const FULL_RANGE_RELATIVE_AMPLITUDE = HIGH_RELATIVE_AMPLITUDE;
 
