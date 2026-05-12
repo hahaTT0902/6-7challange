@@ -4,7 +4,7 @@ const express = require('express');
 const prisma = require('../db');
 const { submitScoreSchema } = require('../utils/validation');
 const { submitScoreLimiter } = require('../middleware/rateLimit');
-const { authOptional } = require('../middleware/auth');
+const { authRequired } = require('../middleware/auth');
 const { claimGuestScores } = require('./auth');
 const { getClientIp, hashIp } = require('../utils/ipHash');
 
@@ -23,9 +23,11 @@ const PUBLIC_FIELDS = {
  * Rank = (count of scores strictly greater) + (count of equal scores with earlier createdAt) + 1
  */
 async function computeRank(scoreValue, createdAt) {
-  const higher = await prisma.score.count({ where: { score: { gt: scoreValue } } });
+  const higher = await prisma.score.count({
+    where: { score: { gt: scoreValue }, userId: { not: null } },
+  });
   const earlierTies = await prisma.score.count({
-    where: { score: scoreValue, createdAt: { lt: createdAt } },
+    where: { score: scoreValue, createdAt: { lt: createdAt }, userId: { not: null } },
   });
   return higher + earlierTies + 1;
 }
@@ -36,7 +38,9 @@ async function computeRank(scoreValue, createdAt) {
  * submitting.
  */
 async function computeHypotheticalRank(scoreValue) {
-  const higher = await prisma.score.count({ where: { score: { gt: scoreValue } } });
+  const higher = await prisma.score.count({
+    where: { score: { gt: scoreValue }, userId: { not: null } },
+  });
   return higher + 1;
 }
 
@@ -48,7 +52,7 @@ router.get('/rank', async (req, res) => {
   }
   try {
     const rank = await computeHypotheticalRank(score);
-    const total = await prisma.score.count();
+    const total = await prisma.score.count({ where: { userId: { not: null } } });
     return res.json({ success: true, rank, total });
   } catch (err) {
     console.error('[GET /api/scores/rank] db error:', err);
@@ -57,16 +61,7 @@ router.get('/rank', async (req, res) => {
 });
 
 // POST /api/scores
-router.post('/', submitScoreLimiter, authOptional, async (req, res) => {
-  // Debug: surface why a submission ends up unverified.
-  console.log(
-    '[POST /api/scores] auth header?',
-    !!req.headers.authorization,
-    'req.user=',
-    req.user ? `${req.user.id}:${req.user.username}` : 'null',
-    'body.nickname=',
-    req.body?.nickname
-  );
+router.post('/', submitScoreLimiter, authRequired, async (req, res) => {
 
   // Logged-in users always submit under their account username; the incoming
   // nickname field is ignored to prevent identity spoofing.
@@ -94,49 +89,36 @@ router.post('/', submitScoreLimiter, authOptional, async (req, res) => {
 
   try {
     let row;
-    if (req.user) {
-      // Self-heal first: merge any guest rows submitted under this username
-      // before the user logged in, so the upcoming upsert sees the right
-      // "existing" personal best.
-      try {
-        if (typeof claimGuestScores === 'function') {
-          await claimGuestScores(req.user.id, req.user.username);
-        }
-      } catch (claimErr) {
-        console.error('[POST /api/scores] claimGuestScores error:', claimErr);
+    // Self-heal first: merge any guest rows submitted under this username
+    // before the user logged in, so the upcoming upsert sees the right
+    // "existing" personal best.
+    try {
+      if (typeof claimGuestScores === 'function') {
+        await claimGuestScores(req.user.id, req.user.username);
       }
-      // One row per registered user — keep their personal best on the board.
-      const existing = await prisma.score.findUnique({ where: { userId: req.user.id } });
-      if (existing) {
-        if (parsed.score > existing.score) {
-          row = await prisma.score.update({
-            where: { userId: req.user.id },
-            data: {
-              nickname: parsed.nickname,
-              score: parsed.score,
-              userAgent,
-              ipHash,
-              createdAt: new Date(),
-            },
-            select: PUBLIC_FIELDS,
-          });
-        } else {
-          // Not a new personal best — keep existing row, just sync nickname.
-          row = await prisma.score.update({
-            where: { userId: req.user.id },
-            data: { nickname: parsed.nickname },
-            select: PUBLIC_FIELDS,
-          });
-        }
-      } else {
-        row = await prisma.score.create({
+    } catch (claimErr) {
+      console.error('[POST /api/scores] claimGuestScores error:', claimErr);
+    }
+    // One row per registered user — keep their personal best on the board.
+    const existing = await prisma.score.findUnique({ where: { userId: req.user.id } });
+    if (existing) {
+      if (parsed.score > existing.score) {
+        row = await prisma.score.update({
+          where: { userId: req.user.id },
           data: {
             nickname: parsed.nickname,
             score: parsed.score,
             userAgent,
             ipHash,
-            userId: req.user.id,
+            createdAt: new Date(),
           },
+          select: PUBLIC_FIELDS,
+        });
+      } else {
+        // Not a new personal best — keep existing row, just sync nickname.
+        row = await prisma.score.update({
+          where: { userId: req.user.id },
+          data: { nickname: parsed.nickname },
           select: PUBLIC_FIELDS,
         });
       }
@@ -147,6 +129,7 @@ router.post('/', submitScoreLimiter, authOptional, async (req, res) => {
           score: parsed.score,
           userAgent,
           ipHash,
+          userId: req.user.id,
         },
         select: PUBLIC_FIELDS,
       });

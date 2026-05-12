@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "node src/index.js",
     "start": "node src/index.js",
+    "scores:cleanup:preview": "node scripts/cleanupScores.js",
+    "scores:cleanup:apply": "node scripts/cleanupScores.js --apply",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy"

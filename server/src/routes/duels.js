@@ -6,6 +6,7 @@ const { z } = require('zod');
 
 const prisma = require('../db');
 const { authRequired } = require('../middleware/auth');
+const { MAX_ALLOWED_SCORE } = require('../utils/validation');
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ function generateCode(length = 6) {
 }
 
 const scoreSchema = z.object({
-  score: z.number().int().min(0),
+  score: z.number().int().min(0).max(MAX_ALLOWED_SCORE),
 });
 
 function publicDuel(d) {
