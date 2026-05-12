@@ -23,11 +23,9 @@ const PUBLIC_FIELDS = {
  * Rank = (count of scores strictly greater) + (count of equal scores with earlier createdAt) + 1
  */
 async function computeRank(scoreValue, createdAt) {
-  const higher = await prisma.score.count({
-    where: { score: { gt: scoreValue }, userId: { not: null } },
-  });
+  const higher = await prisma.score.count({ where: { score: { gt: scoreValue } } });
   const earlierTies = await prisma.score.count({
-    where: { score: scoreValue, createdAt: { lt: createdAt }, userId: { not: null } },
+    where: { score: scoreValue, createdAt: { lt: createdAt } },
   });
   return higher + earlierTies + 1;
 }
@@ -38,9 +36,7 @@ async function computeRank(scoreValue, createdAt) {
  * submitting.
  */
 async function computeHypotheticalRank(scoreValue) {
-  const higher = await prisma.score.count({
-    where: { score: { gt: scoreValue }, userId: { not: null } },
-  });
+  const higher = await prisma.score.count({ where: { score: { gt: scoreValue } } });
   return higher + 1;
 }
 
@@ -52,7 +48,7 @@ router.get('/rank', async (req, res) => {
   }
   try {
     const rank = await computeHypotheticalRank(score);
-    const total = await prisma.score.count({ where: { userId: { not: null } } });
+    const total = await prisma.score.count();
     return res.json({ success: true, rank, total });
   } catch (err) {
     console.error('[GET /api/scores/rank] db error:', err);

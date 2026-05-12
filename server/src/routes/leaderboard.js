@@ -33,10 +33,7 @@ router.get('/', async (req, res) => {
   if (limit > 100) limit = 100;
 
   try {
-    const where = {
-      ...getPeriodWhere(period),
-      userId: { not: null },
-    };
+    const where = getPeriodWhere(period);
     const rows = await prisma.score.findMany({
       where,
       orderBy: [{ score: 'desc' }, { createdAt: 'asc' }],
