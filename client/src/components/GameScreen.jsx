@@ -115,22 +115,22 @@ export default function GameScreen({ onFinish, onBack }) {
     if (!token) return undefined;
     let cancelled = false;
     let timer = 0;
-    let lastReported = -1;
     async function sendTick() {
       if (cancelled) return;
       const s = liveScoreRef.current | 0;
-      if (s !== lastReported) {
-        try {
-          await tickGameSession(token, s);
-          lastReported = s;
-        } catch (err) {
-          // A failed tick is non-fatal individually, but if the server
-          // rejected (e.g. invalidated the session) the final submit will
-          // also fail — surface a hint to the user.
-          console.warn('tick failed', err);
-          if (err?.status === 400) {
-            setSessionError(t('game.sessionError'));
-          }
+      // Always send a tick on each interval — it doubles as a heartbeat so
+      // a player who stops moving near the end of the round still keeps the
+      // server's lastTickAt fresh. Sending the same score is cheap and the
+      // server accepts non-decreasing values.
+      try {
+        await tickGameSession(token, s);
+      } catch (err) {
+        // A failed tick is non-fatal individually, but if the server
+        // rejected (e.g. invalidated the session) the final submit will
+        // also fail — surface a hint to the user.
+        console.warn('tick failed', err);
+        if (err?.status === 400) {
+          setSessionError(t('game.sessionError'));
         }
       }
       if (!cancelled) timer = setTimeout(sendTick, 1500);
