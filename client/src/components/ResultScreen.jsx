@@ -69,7 +69,13 @@ export default function ResultScreen({
         } catch (e) {
           if (cancelled) return;
           console.error(e);
-          setSubmitError(t('result.errSubmit', { detail: '' }));
+          const detail =
+            Array.isArray(e?.payload?.details) && e.payload.details.length
+              ? `: ${e.payload.details.join(', ')}`
+              : e?.message
+                ? `: ${e.message}`
+                : '';
+          setSubmitError(t('result.errSubmit', { detail }));
         } finally {
           if (!cancelled) setSubmitting(false);
         }

@@ -140,21 +140,36 @@ export default function GameScreen({ onFinish, onBack }) {
     return () => {
       cancelled = true;
       clearTimeout(timer);
-      // Final tick on exit (fire-and-forget) to capture last few reps.
-      const s = liveScoreRef.current | 0;
-      if (s > 0 && s !== lastReported) {
-        tickGameSession(token, s).catch(() => {});
-      }
+      // Note: the final tick is handled by the dedicated 'finished' effect
+      // so it can be awaited before submit.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  // When finished, hand off to parent
+  // When finished, flush the final tick (so the server's lastScore matches
+  // the real ending score) BEFORE handing off to the parent's submit.
   useEffect(() => {
-    if (phase === 'finished') {
-      onFinish?.(score, sessionTokenRef.current);
+    if (phase !== 'finished') return undefined;
+    let cancelled = false;
+    (async () => {
+      const token = sessionTokenRef.current;
+      const finalScore = liveScoreRef.current | 0;
+      if (token && finalScore > 0) {
+        try {
+          await tickGameSession(token, finalScore);
+        } catch (err) {
+          // Non-fatal: the server may still accept based on the previous
+          // tick + tail allowance. Log only.
+          console.warn('final tick failed', err);
+        }
+      }
+      if (cancelled) return;
+      onFinish?.(finalScore, token);
       sessionTokenRef.current = null;
-    }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 

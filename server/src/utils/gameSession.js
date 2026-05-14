@@ -51,6 +51,13 @@ const SUBMIT_TICK_SLACK = Math.min(
 // Reject ticks closer than this together (defends against burst-flooding a
 // single window's allowance).
 const MIN_TICK_INTERVAL_MS = 200;
+// At submit time, the heartbeat must have been seen recently. Longer than
+// this since the last tick means the client stopped reporting progress and
+// the score can no longer be trusted.
+const MAX_SUBMIT_TICK_GAP_MS = Number.parseInt(
+  process.env.MAX_SUBMIT_TICK_GAP_MS || '4000',
+  10
+);
 
 // sid -> { uid, iat, expiresAt, lastScore, lastTickAt }
 const activeSessions = new Map();
@@ -253,8 +260,23 @@ function consumeSessionToken(token, userId, claimedScore) {
       error: `Score exceeds per-round cap of ${MAX_TOKEN_SCORE}`,
     };
   }
-  // The real cap: a client that didn't tick cannot fabricate a score.
-  const liveCap = entry.lastScore + SUBMIT_TICK_SLACK;
+  // The real cap: a client that didn't tick cannot fabricate a score, and a
+  // client whose heartbeat went silent cannot inflate after the fact.
+  const tickGapMs = Math.max(0, now - entry.lastTickAt);
+  if (tickGapMs > MAX_SUBMIT_TICK_GAP_MS) {
+    return {
+      ok: false,
+      error: 'Heartbeat lost during round; start a new round',
+    };
+  }
+  // Allow reps that occurred between the last tick and the round end: scale
+  // the tail allowance to the actual gap, bounded by SUBMIT_TICK_SLACK as a
+  // floor for the typical ≈1s gap.
+  const tailAllowance = Math.max(
+    SUBMIT_TICK_SLACK,
+    Math.ceil((MAX_SCORE_PER_SECOND * (tickGapMs + 500)) / 1000)
+  );
+  const liveCap = Math.min(MAX_TOKEN_SCORE, entry.lastScore + tailAllowance);
   if (score > liveCap) {
     return {
       ok: false,
