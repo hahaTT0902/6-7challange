@@ -55,7 +55,7 @@ const MIN_TICK_INTERVAL_MS = 200;
 // this since the last tick means the client stopped reporting progress and
 // the score can no longer be trusted.
 const MAX_SUBMIT_TICK_GAP_MS = Number.parseInt(
-  process.env.MAX_SUBMIT_TICK_GAP_MS || '4000',
+  process.env.MAX_SUBMIT_TICK_GAP_MS || '8000',
   10
 );
 
