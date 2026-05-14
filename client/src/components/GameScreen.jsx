@@ -8,7 +8,7 @@ import { usePoseTracking } from '../hooks/usePoseTracking.js';
 import { useRepCounter } from '../hooks/useRepCounter.js';
 import { COUNTDOWN_MS, GAME_DURATION_MS, LANDMARKS, MIN_CONFIDENCE } from '../utils/constants.js';
 import { LanguageToggle, useI18n } from '../utils/i18n.jsx';
-import { startGameSession, getAuthToken } from '../utils/api.js';
+import { startGameSession, getAuthToken, tickGameSession } from '../utils/api.js';
 
 // Game phases:
 // 'idle' | 'requesting' | 'positioning' | 'countdown' | 'playing' | 'finished'
@@ -30,6 +30,12 @@ export default function GameScreen({ onFinish, onBack }) {
   // Only logged-in players can obtain one; guests still play but cannot submit.
   const sessionTokenRef = useRef(null);
   const [sessionError, setSessionError] = useState(null);
+  // Live reference to the current score so the tick timer always sees the
+  // latest value without re-binding on every render.
+  const liveScoreRef = useRef(0);
+  useEffect(() => {
+    liveScoreRef.current = score;
+  }, [score]);
 
   const { loading: modelLoading, error: modelError, hasPerson } = usePoseTracking({
     videoRef,
@@ -98,6 +104,49 @@ export default function GameScreen({ onFinish, onBack }) {
     }
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
+  }, [phase]);
+
+  // Server-side anti-tamper heartbeat: while playing, report the running
+  // score every ~1.5s. The server caps the final submission to (lastTick +
+  // small slack), so a client that never ticks cannot inflate the score.
+  useEffect(() => {
+    if (phase !== 'playing') return undefined;
+    const token = sessionTokenRef.current;
+    if (!token) return undefined;
+    let cancelled = false;
+    let timer = 0;
+    let lastReported = -1;
+    async function sendTick() {
+      if (cancelled) return;
+      const s = liveScoreRef.current | 0;
+      if (s !== lastReported) {
+        try {
+          await tickGameSession(token, s);
+          lastReported = s;
+        } catch (err) {
+          // A failed tick is non-fatal individually, but if the server
+          // rejected (e.g. invalidated the session) the final submit will
+          // also fail — surface a hint to the user.
+          console.warn('tick failed', err);
+          if (err?.status === 400) {
+            setSessionError(t('game.sessionError'));
+          }
+        }
+      }
+      if (!cancelled) timer = setTimeout(sendTick, 1500);
+    }
+    // Initial tick a bit sooner so even very short rounds have one tick.
+    timer = setTimeout(sendTick, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      // Final tick on exit (fire-and-forget) to capture last few reps.
+      const s = liveScoreRef.current | 0;
+      if (s > 0 && s !== lastReported) {
+        tickGameSession(token, s).catch(() => {});
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   // When finished, hand off to parent

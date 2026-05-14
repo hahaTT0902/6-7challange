@@ -69,4 +69,16 @@ app.use((err, req, res, next) => {
 const PORT = parseInt(process.env.PORT, 10) || 3007;
 app.listen(PORT, () => {
   console.log(`67 Challenge API listening on :${PORT} (${NODE_ENV})`);
+  // Cryptographic secrets must be set in production; the in-source defaults
+  // are only acceptable for local dev.
+  const insecureJwt =
+    !process.env.JWT_SECRET || /change-me/i.test(process.env.JWT_SECRET);
+  const insecureSession =
+    (!process.env.SCORE_SESSION_SECRET && insecureJwt) ||
+    /change-me/i.test(process.env.SCORE_SESSION_SECRET || '');
+  if (NODE_ENV === 'production' && (insecureJwt || insecureSession)) {
+    console.warn(
+      '[security] WARNING: JWT_SECRET / SCORE_SESSION_SECRET is unset or using a default value in production. Set strong random values in your environment.'
+    );
+  }
 });

@@ -10,6 +10,7 @@ const { getClientIp, hashIp } = require('../utils/ipHash');
 const {
   issueSessionToken,
   consumeSessionToken,
+  recordTick,
 } = require('../utils/gameSession');
 
 const router = express.Router();
@@ -56,6 +57,22 @@ router.post('/session', submitScoreLimiter, authRequired, (req, res) => {
     console.error('[POST /api/scores/session] error:', err);
     return res.status(500).json({ success: false, error: 'Internal error' });
   }
+});
+
+// POST /api/scores/session/tick — in-round progress heartbeat. Required so
+// the final score submission cannot exceed what was actually built up tick
+// by tick. A client that skips ticks is capped to a trivial value.
+router.post('/session/tick', authRequired, (req, res) => {
+  const reported = Number(req.body?.score);
+  const result = recordTick(req.body?.sessionToken, req.user.id, reported);
+  if (!result.ok) {
+    return res.status(400).json({
+      success: false,
+      error: result.error,
+      code: 'invalid_tick',
+    });
+  }
+  return res.json({ success: true, lastScore: result.lastScore });
 });
 
 // GET /api/scores/rank?score=N—public, preview rank for any score.

@@ -51,6 +51,13 @@ export function startGameSession() {
   return request('/api/scores/session', { method: 'POST' });
 }
 
+export function tickGameSession(sessionToken, score) {
+  return request('/api/scores/session/tick', {
+    method: 'POST',
+    body: JSON.stringify({ sessionToken, score }),
+  });
+}
+
 export function fetchLeaderboard({ period = 'all', limit = 100 } = {}) {
   const qs = new URLSearchParams({ period, limit: String(limit) }).toString();
   return request(`/api/leaderboard?${qs}`);
