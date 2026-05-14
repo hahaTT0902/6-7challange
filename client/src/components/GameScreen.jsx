@@ -8,6 +8,7 @@ import { usePoseTracking } from '../hooks/usePoseTracking.js';
 import { useRepCounter } from '../hooks/useRepCounter.js';
 import { COUNTDOWN_MS, GAME_DURATION_MS, LANDMARKS, MIN_CONFIDENCE } from '../utils/constants.js';
 import { LanguageToggle, useI18n } from '../utils/i18n.jsx';
+import { startGameSession, getAuthToken } from '../utils/api.js';
 
 // Game phases:
 // 'idle' | 'requesting' | 'positioning' | 'countdown' | 'playing' | 'finished'
@@ -24,6 +25,11 @@ export default function GameScreen({ onFinish, onBack }) {
     enabled: phase === 'playing',
     t,
   });
+
+  // Server-issued single-use token authorizing the upcoming score submission.
+  // Only logged-in players can obtain one; guests still play but cannot submit.
+  const sessionTokenRef = useRef(null);
+  const [sessionError, setSessionError] = useState(null);
 
   const { loading: modelLoading, error: modelError, hasPerson } = usePoseTracking({
     videoRef,
@@ -97,12 +103,28 @@ export default function GameScreen({ onFinish, onBack }) {
   // When finished, hand off to parent
   useEffect(() => {
     if (phase === 'finished') {
-      onFinish?.(score);
+      onFinish?.(score, sessionTokenRef.current);
+      sessionTokenRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  function beginCountdown() {
+  async function beginCountdown() {
+    setSessionError(null);
+    sessionTokenRef.current = null;
+    // Only authed users can submit; only they need a token. Failing to fetch
+    // one for an authed user is a hard error (would lose the score), so block.
+    if (getAuthToken()) {
+      try {
+        const r = await startGameSession();
+        sessionTokenRef.current = r?.session?.token || null;
+        if (!sessionTokenRef.current) throw new Error('No token');
+      } catch (err) {
+        console.error('startGameSession failed', err);
+        setSessionError(t('game.sessionError'));
+        return;
+      }
+    }
     resetCounter();
     setTimeLeft(GAME_DURATION_MS);
     setCountdown(3);
@@ -133,6 +155,7 @@ export default function GameScreen({ onFinish, onBack }) {
   function statusText() {
     if (phase === 'requesting') return t('game.statusWaitingCamera');
     if (camError) return camError;
+    if (sessionError) return sessionError;
     if (modelError) return t('game.statusModelError', { msg: modelError });
     if (modelLoading) return t('game.statusModelLoading');
     if (phase === 'positioning') {

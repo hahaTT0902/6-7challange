@@ -10,6 +10,7 @@ const NICK_REGEX = /^[A-Za-z0-9 _\-\u4e00-\u9fff]+$/;
 
 export default function ResultScreen({
   score,
+  sessionToken,
   bestScore,
   defaultNickname,
   onPlayAgain,
@@ -51,12 +52,16 @@ export default function ResultScreen({
 
     // 2) For logged-in users, auto-submit so the score is recorded and we get
     //    the canonical rank back from the server.
-    if (user?.username) {
+    if (user?.username && sessionToken) {
       (async () => {
         setSubmitting(true);
         setSubmitError(null);
         try {
-          const res = await submitScore({ nickname: user.username, score });
+          const res = await submitScore({
+            nickname: user.username,
+            score,
+            sessionToken,
+          });
           if (cancelled) return;
           setSubmitted(true);
           if (res?.rank != null) setRank(res.rank);
@@ -93,7 +98,11 @@ export default function ResultScreen({
     }
     setSubmitting(true);
     try {
-      const res = await submitScore({ nickname: nickname.trim(), score });
+      const res = await submitScore({
+        nickname: nickname.trim(),
+        score,
+        sessionToken,
+      });
       setSubmitted(true);
       setRank(res?.rank ?? null);
       onSaveNickname?.(nickname.trim());

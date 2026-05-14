@@ -12,12 +12,14 @@ import { useLocalBestScore } from './hooks/useLocalBestScore.js';
 export default function App() {
   const [screen, setScreen] = useState('landing');
   const [lastScore, setLastScore] = useState(0);
+  const [lastSessionToken, setLastSessionToken] = useState(null);
   const [highlightId, setHighlightId] = useState(null);
   const [authMode, setAuthMode] = useState('login');
   const { best, nickname, recordScore, recordNickname } = useLocalBestScore();
 
-  function handleFinish(score) {
+  function handleFinish(score, sessionToken) {
     setLastScore(score);
+    setLastSessionToken(sessionToken || null);
     recordScore(score);
     setScreen('result');
   }
@@ -69,6 +71,7 @@ export default function App() {
       {screen === 'result' && (
         <ResultScreen
           score={lastScore}
+          sessionToken={lastSessionToken}
           bestScore={best}
           defaultNickname={nickname}
           onPlayAgain={() => go('game')}

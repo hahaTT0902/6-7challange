@@ -7,6 +7,10 @@ const { submitScoreLimiter } = require('../middleware/rateLimit');
 const { authRequired } = require('../middleware/auth');
 const { claimGuestScores } = require('./auth');
 const { getClientIp, hashIp } = require('../utils/ipHash');
+const {
+  issueSessionToken,
+  consumeSessionToken,
+} = require('../utils/gameSession');
 
 const router = express.Router();
 
@@ -39,6 +43,20 @@ async function computeHypotheticalRank(scoreValue) {
   const higher = await prisma.score.count({ where: { score: { gt: scoreValue } } });
   return higher + 1;
 }
+
+// POST /api/scores/session — issue a single-use signed token authorizing a
+// future score submission. Required because the server cannot replay the
+// player's pose stream; the token forces submissions to belong to a real
+// round started server-side and waited out for the full duration.
+router.post('/session', submitScoreLimiter, authRequired, (req, res) => {
+  try {
+    const session = issueSessionToken(req.user.id);
+    return res.status(201).json({ success: true, session });
+  } catch (err) {
+    console.error('[POST /api/scores/session] error:', err);
+    return res.status(500).json({ success: false, error: 'Internal error' });
+  }
+});
 
 // GET /api/scores/rank?score=N—public, preview rank for any score.
 router.get('/rank', async (req, res) => {
@@ -75,6 +93,22 @@ router.post('/', submitScoreLimiter, authRequired, async (req, res) => {
       success: false,
       error: 'Invalid input',
       details: err?.errors?.map((e) => e.message) || [String(err?.message || err)],
+    });
+  }
+
+  // Single-use signed session token: proves this submission corresponds to a
+  // round actually started server-side, enforces minimum elapsed time, and
+  // caps the per-round score regardless of the global MAX_ALLOWED_SCORE.
+  const sessionResult = consumeSessionToken(
+    req.body?.sessionToken,
+    req.user.id,
+    parsed.score
+  );
+  if (!sessionResult.ok) {
+    return res.status(400).json({
+      success: false,
+      error: sessionResult.error,
+      code: 'invalid_session',
     });
   }
 

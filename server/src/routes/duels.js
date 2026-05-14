@@ -7,6 +7,7 @@ const { z } = require('zod');
 const prisma = require('../db');
 const { authRequired } = require('../middleware/auth');
 const { MAX_ALLOWED_SCORE } = require('../utils/validation');
+const { consumeSessionToken } = require('../utils/gameSession');
 
 const router = express.Router();
 
@@ -141,6 +142,20 @@ router.post('/:code/score', authRequired, async (req, res) => {
       success: false,
       error: 'Invalid input',
       details: err?.errors?.map((e) => e.message) || [String(err?.message || err)],
+    });
+  }
+  // Same anti-tamper check as POST /api/scores: a duel round must originate
+  // from a server-issued single-use token, played out for the full duration.
+  const sessionResult = consumeSessionToken(
+    req.body?.sessionToken,
+    req.user.id,
+    parsed.score
+  );
+  if (!sessionResult.ok) {
+    return res.status(400).json({
+      success: false,
+      error: sessionResult.error,
+      code: 'invalid_session',
     });
   }
   try {

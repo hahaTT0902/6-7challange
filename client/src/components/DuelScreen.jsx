@@ -82,10 +82,10 @@ export default function DuelScreen({ onBack, onLogin }) {
     }
   }
 
-  async function handleSubmitScore(score) {
+  async function handleSubmitScore(score, sessionToken) {
     if (!duel?.code) return;
     try {
-      const res = await apiSubmit(duel.code, score);
+      const res = await apiSubmit(duel.code, score, sessionToken);
       setDuel(res.duel);
     } catch (err) {
       setError(err?.message || t('duel.errSubmit'));
@@ -117,7 +117,7 @@ export default function DuelScreen({ onBack, onLogin }) {
   if (phase === 'playing') {
     return (
       <GameScreen
-        onFinish={(score) => handleSubmitScore(score)}
+        onFinish={(score, sessionToken) => handleSubmitScore(score, sessionToken)}
         onBack={() => setPhase('room')}
       />
     );

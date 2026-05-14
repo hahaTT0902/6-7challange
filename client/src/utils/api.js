@@ -40,11 +40,15 @@ async function request(path, options = {}) {
   return data;
 }
 
-export function submitScore({ nickname, score }) {
+export function submitScore({ nickname, score, sessionToken }) {
   return request('/api/scores', {
     method: 'POST',
-    body: JSON.stringify({ nickname, score }),
+    body: JSON.stringify({ nickname, score, sessionToken }),
   });
+}
+
+export function startGameSession() {
+  return request('/api/scores/session', { method: 'POST' });
 }
 
 export function fetchLeaderboard({ period = 'all', limit = 100 } = {}) {
@@ -97,10 +101,10 @@ export function getDuel(code) {
   return request(`/api/duels/${encodeURIComponent(code)}`);
 }
 
-export function submitDuelScore(code, score) {
+export function submitDuelScore(code, score, sessionToken) {
   return request(`/api/duels/${encodeURIComponent(code)}/score`, {
     method: 'POST',
-    body: JSON.stringify({ score }),
+    body: JSON.stringify({ score, sessionToken }),
   });
 }
 

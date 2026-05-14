@@ -46,6 +46,7 @@ const dict = {
     'game.statusWaitingCamera': 'Waiting for camera…',
     'game.statusModelError': 'Pose model error: {msg}',
     'game.statusModelLoading': 'Loading pose model…',
+    'game.sessionError': 'Could not start a verified round. Check your connection and try again.',
     'game.statusStepBack': 'Step back and keep your upper body visible.',
     'game.statusReady': 'Ready! Tap Start when you are set.',
     'game.feedbackTooSmall':
@@ -203,6 +204,7 @@ const dict = {
     'game.statusWaitingCamera': '正在请求摄像头…',
     'game.statusModelError': '姿态模型错误:{msg}',
     'game.statusModelLoading': '加载姿态模型…',
+    'game.sessionError': '无法开启受信任的回合,请检查网络后重试。',
     'game.statusStepBack': '请站远一点,让上半身完整出现在画面里。',
     'game.statusReady': '准备好了!点击开始。',
     'game.feedbackTooSmall': '幅度太小 — 把手抬高一点才能计分。',
